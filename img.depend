@@ -1,0 +1,11 @@
+# depslib dependency file v1.0
+1401710293 source:/home/cesar/img/main.cpp
+	<Magick++.h>
+	<iostream>
+	<string>
+
+1401711741 source:/home/cesar/img/main2.cpp
+	<Magick++.h>
+	<iostream>
+	<string>
+
