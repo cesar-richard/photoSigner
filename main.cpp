@@ -11,7 +11,7 @@
 #include <Magick++.h>
 #include <iostream>
 #include <string>
-#include<string.h>
+#include <string.h>
 #include <cstdlib>
 #include <fstream>
 #include <dirent.h>
@@ -33,7 +33,7 @@ void proccessImg(string path, string fileName){
         Image image(path + fileName);
         image.fileName(fileName);
 
-        //Image mark("img2.jpg");
+        Image mark("wm.png");
         cout << "File Name  = \t " << image.baseFilename().c_str() << endl;
         //cout << "Original Width = " << image.baseColumns() << "px"  << endl;
         //cout << "Original heigth = " << image.baseRows() << "px" << endl;
@@ -49,20 +49,20 @@ void proccessImg(string path, string fileName){
         image.attribute("exif:Artist","Cesar Richard");
         //image.annotate("COUCOU",SouthWestGravity);
 
-int value = MaxRGB - (MaxRGB/9);
-Color couleur = Color(value,value,value);
-couleur.alpha(0.85);
+        int value = MaxRGB - (MaxRGB/9);
+        Color couleur = Color(value,value,value);
+        couleur.alpha(0.85);
 
-image.strokeColor(couleur); // Outline color
-image.fillColor(couleur); // Fill color
-image.strokeWidth(1);
-image.font("");
-image.fontPointsize(16);
-// Draw a String
-image.draw( DrawableText(15,image.rows()-15, copyrightString) );
+        image.strokeColor(couleur); // Outline color
+        image.fillColor(couleur); // Fill color
+        image.strokeWidth(1);
+        image.font("");
+        image.fontPointsize(16);
+        // Draw a String
+        image.draw( DrawableText(15,image.rows()-15, copyrightString) );
 
+        image.composite(mark,SouthEastGravity);
 
-// Display the result
         image.write(path + "OKI_" + image.fileName());
         //image.display( );
 }
