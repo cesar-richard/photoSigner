@@ -10,11 +10,13 @@
 
 #include <Magick++.h>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <string.h>
 #include <cstdlib>
 #include <fstream>
 #include <dirent.h>
+#include <exiv2/exiv2.hpp>
 
 using namespace std;
 using namespace Magick;
@@ -28,12 +30,45 @@ using namespace Magick;
 }
 */
 
-void proccessImg(string path, string fileName){
+int addTags(string FilePath){
     string copyrightString = "C.Richard";
+
+    try {
+
+        Exiv2::Image::AutoPtr image = Exiv2::ImageFactory::open(FilePath);
+        image->readMetadata();
+
+        Exiv2::IptcData &iptcData = image->iptcData();
+        if (iptcData.empty()) {
+            FilePath += ": No IPTC data found in the file";
+            throw Exiv2::Error(1, FilePath);
+        }
+        iptcData.clear();
+        Exiv2::Value::AutoPtr value = Exiv2::Value::create(Exiv2::string);
+        Exiv2::IptcKey key = Exiv2::IptcKey("Iptc.Application2.Keywords");
+        value->read("2014");
+        iptcData.add(key, value.get());
+        value->read("HELLO");
+        iptcData.add(Exiv2::IptcKey("Iptc.Application2.Headline"),value.get());
+        image->setIptcData(iptcData);
+        image->writeMetadata();
+
+        return 0;
+    }
+    catch (Exiv2::AnyError& e) {
+        std::cout << "Caught Exiv2 exception '" << e << "'\n";
+        return -1;
+    }
+
+}
+
+void proccessImg(string path, string fileName, string nameIndex, string outputFileName, string title){
+    addTags(path+fileName);
+string copyrightString = "C.Richard";
         Image image(path + fileName);
         image.fileName(fileName);
 
-        Image mark("wm.png");
+        Image mark("wm.png");//TODO mettre en param
         cout << "File Name  = \t " << image.baseFilename().c_str() << endl;
         //cout << "Original Width = " << image.baseColumns() << "px"  << endl;
         //cout << "Original heigth = " << image.baseRows() << "px" << endl;
@@ -45,9 +80,14 @@ void proccessImg(string path, string fileName){
         }else{
             cout << "Image plus petite que la cible." << endl;
         }
-        image.attribute("exif:Copyright","Cesar Richard");
-        image.attribute("exif:Artist","Cesar Richard");
-        //image.annotate("COUCOU",SouthWestGravity);
+
+        image.attribute("EXIF:Copyright","Cesar Richard");//TODO Ajouter le reste des TAGs
+        image.attribute("EXIF:Artist","Cesar Richard");
+        image.attribute("IPTC:By-line","Cesar Richard");
+        image.attribute("IPTC:Credit","Cesar Richard");
+        image.attribute("IPTC:CopyrightNotice","Cesar Richard");
+        image.attribute("IPTC:ObjectName",title);
+        image.attribute("IPTC:Headline",title);
 
         int value = MaxRGB - (MaxRGB/9);
         Color couleur = Color(value,value,value);
@@ -62,19 +102,22 @@ void proccessImg(string path, string fileName){
         image.draw( DrawableText(15,image.rows()-15, copyrightString) );
 
         image.composite(mark,SouthEastGravity);
-
-        image.write(path + "OKI_" + image.fileName());
-        //image.display( );
+        image.write(path + outputFileName + "_" + nameIndex + ".jpg");
 }
 
-void listFile(string path){
-
+void listFile(string path, string outputFileName, string title){
         DIR *pDIR;
         struct dirent *entry;
+        int counter=0;
+        std::stringstream ss;
         if( (pDIR=opendir(path.c_str())) ){
                 while((entry = readdir(pDIR))){
-                        if( strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0 )
-                        proccessImg(path,entry->d_name);
+                        if( strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0 ){
+                            ss.clear();
+                            ss.str("");
+                            ss << (++counter);
+                            proccessImg(path,entry->d_name,ss.str(),outputFileName,title);
+                        }
                 }
                 closedir(pDIR);
         }
@@ -87,7 +130,7 @@ int main(int argc,char **argv)
 
     try {
         //proccessImg(argv[1]);
-        listFile(argv[1]);
+        listFile(argv[1],argv[2],argv[3]); //TODO: mettre au propre le moteur d'arguments
     }
     catch( exception &error_ ){
         cout << "Caught exception: " << error_.what() << endl;
