@@ -45,9 +45,8 @@ int addTags(string FilePath){
         }
         iptcData.clear();
         Exiv2::Value::AutoPtr value = Exiv2::Value::create(Exiv2::string);
-        Exiv2::IptcKey key = Exiv2::IptcKey("Iptc.Application2.Keywords");
         value->read("2014");
-        iptcData.add(key, value.get());
+        iptcData.add(Exiv2::IptcKey("Iptc.Application2.Keywords"), value.get());
         value->read("HELLO");
         iptcData.add(Exiv2::IptcKey("Iptc.Application2.Headline"),value.get());
         image->setIptcData(iptcData);
@@ -67,8 +66,8 @@ void proccessImg(string path, string fileName, string nameIndex, string outputFi
 string copyrightString = "C.Richard";
         Image image(path + fileName);
         image.fileName(fileName);
-
-        Image mark("wm.png");//TODO mettre en param
+		
+		Image mark("wm.png");//TODO mettre en param
         cout << "File Name  = \t " << image.baseFilename().c_str() << endl;
         //cout << "Original Width = " << image.baseColumns() << "px"  << endl;
         //cout << "Original heigth = " << image.baseRows() << "px" << endl;
@@ -81,27 +80,28 @@ string copyrightString = "C.Richard";
             cout << "Image plus petite que la cible." << endl;
         }
 
-        image.attribute("EXIF:Copyright","Cesar Richard");//TODO Ajouter le reste des TAGs
-        image.attribute("EXIF:Artist","Cesar Richard");
-        image.attribute("IPTC:By-line","Cesar Richard");
-        image.attribute("IPTC:Credit","Cesar Richard");
-        image.attribute("IPTC:CopyrightNotice","Cesar Richard");
+        image.attribute("EXIF:Copyright",copyrightString);//TODO Ajouter le reste des TAGs
+        image.attribute("EXIF:Artist",copyrightString);
+        image.attribute("IPTC:By-line",copyrightString);
+        image.attribute("IPTC:Creator",copyrightString);
+        image.attribute("IPTC:Credit",copyrightString);
+        image.attribute("IPTC:CopyrightNotice",copyrightString);
         image.attribute("IPTC:ObjectName",title);
-        image.attribute("IPTC:Headline",title);
+        image.attribute("IPTC:Title",title);
 
-        int value = MaxRGB - (MaxRGB/9);
+        int value = MaxRGB - (MaxRGB/10);
         Color couleur = Color(value,value,value);
-        couleur.alpha(0.85);
+        couleur.alpha(0.7);
 
         image.strokeColor(couleur); // Outline color
         image.fillColor(couleur); // Fill color
         image.strokeWidth(1);
         image.font("");
-        image.fontPointsize(16);
+        image.fontPointsize(24);
         // Draw a String
         image.draw( DrawableText(15,image.rows()-15, copyrightString) );
 
-        image.composite(mark,SouthEastGravity);
+        image.composite(mark,SouthEastGravity,DissolveCompositeOp);
         image.write(path + outputFileName + "_" + nameIndex + ".jpg");
 }
 
@@ -129,7 +129,6 @@ int main(int argc,char **argv)
   InitializeMagick(*argv);
 
     try {
-        //proccessImg(argv[1]);
         listFile(argv[1],argv[2],argv[3]); //TODO: mettre au propre le moteur d'arguments
     }
     catch( exception &error_ ){
