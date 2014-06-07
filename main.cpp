@@ -9,6 +9,7 @@
 //
 
 #include <Magick++.h>
+#include <tclap/CmdLine.h>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -20,7 +21,49 @@
 
 using namespace std;
 using namespace Magick;
+using namespace TCLAP;
 
+string title;
+string copyrightString;
+string path;
+string watermark;
+string outputName;
+
+void parseOptions(int argc, char** argv)
+{
+    try
+    {
+        CmdLine cmd("Command description message", ' ', "0.1");
+
+        ValueArg<string> titleArg("t","title","Event's title",true,"","string");
+        cmd.add( titleArg );
+
+        ValueArg<string> copyrightArg("c","copyright","Copyright string",true,"","string");
+        cmd.add( copyrightArg );
+
+        ValueArg<string> pathArg("p","path","Path to the photos",false,"","string");
+        cmd.add( pathArg );
+
+        ValueArg<string> watermarkArg("w","watermark","path to watermark file",true,"wm.png","string");
+        cmd.add( watermarkArg );
+        
+        ValueArg<string> outputFileNameArg("o","outputFileName","Output file name",true,"output","string");
+        cmd.add( outputFileNameArg );
+        
+        cmd.parse( argc, argv );
+
+        // Get the value parsed by each arg.
+        copyrightString = copyrightArg.getValue();
+        path = pathArg.getValue();
+        title = titleArg.getValue();
+        watermark = watermarkArg.getValue();
+        outputName = outputFileNameArg.getValue();
+    }
+    catch (ArgException &e)    // catch any exceptions
+    {
+        cerr << "error: " << e.error() << " for arg " << e.argId() << endl;
+    }
+}
 
 /*static void Usage ( char **argv )
 {
@@ -61,13 +104,12 @@ int addTags(string FilePath){
 
 }
 
-void proccessImg(string path, string fileName, string nameIndex, string outputFileName, string title){
+void proccessImg(string path, string fileName, string nameIndex, string outputFileName, string titleString, string watermarkPath,string copyright){
     addTags(path+fileName);
-string copyrightString = "C.Richard";
         Image image(path + fileName);
         image.fileName(fileName);
 		
-		Image mark("wm.png");//TODO mettre en param
+		Image mark(watermarkPath);//TODO mettre en param
         cout << "File Name  = \t " << image.baseFilename().c_str() << endl;
         //cout << "Original Width = " << image.baseColumns() << "px"  << endl;
         //cout << "Original heigth = " << image.baseRows() << "px" << endl;
@@ -80,14 +122,14 @@ string copyrightString = "C.Richard";
             cout << "Image plus petite que la cible." << endl;
         }
 
-        image.attribute("EXIF:Copyright",copyrightString);//TODO Ajouter le reste des TAGs
-        image.attribute("EXIF:Artist",copyrightString);
-        image.attribute("IPTC:By-line",copyrightString);
-        image.attribute("IPTC:Creator",copyrightString);
-        image.attribute("IPTC:Credit",copyrightString);
-        image.attribute("IPTC:CopyrightNotice",copyrightString);
-        image.attribute("IPTC:ObjectName",title);
-        image.attribute("IPTC:Title",title);
+        image.attribute("EXIF:Copyright",copyright);//TODO Ajouter le reste des TAGs
+        image.attribute("EXIF:Artist",copyright);
+        image.attribute("IPTC:By-line",copyright);
+        image.attribute("IPTC:Creator",copyright);
+        image.attribute("IPTC:Credit",copyright);
+        image.attribute("IPTC:CopyrightNotice",copyright);
+        image.attribute("IPTC:ObjectName",titleString);
+        image.attribute("IPTC:Title",titleString);
 
         int value = MaxRGB - (MaxRGB/10);
         Color couleur = Color(value,value,value);
@@ -105,7 +147,7 @@ string copyrightString = "C.Richard";
         image.write(path + outputFileName + "_" + nameIndex + ".jpg");
 }
 
-void listFile(string path, string outputFileName, string title){
+void listFile(string path, string outputFileName, string titleString, string watermarPath, string copyright){
         DIR *pDIR;
         struct dirent *entry;
         int counter=0;
@@ -116,7 +158,7 @@ void listFile(string path, string outputFileName, string title){
                             ss.clear();
                             ss.str("");
                             ss << (++counter);
-                            proccessImg(path,entry->d_name,ss.str(),outputFileName,title);
+                            proccessImg(path,entry->d_name,ss.str(),outputFileName,titleString,watermarPath,copyright);
                         }
                 }
                 closedir(pDIR);
@@ -125,11 +167,12 @@ void listFile(string path, string outputFileName, string title){
 
 int main(int argc,char **argv)
 {
+	parseOptions(argc,argv);
   // Initialize ImageMagick install location for Windows
   InitializeMagick(*argv);
 
     try {
-        listFile(argv[1],argv[2],argv[3]); //TODO: mettre au propre le moteur d'arguments
+        listFile(path,outputName,title,watermark,copyrightString); //TODO: mettre au propre le moteur d'arguments
     }
     catch( exception &error_ ){
         cout << "Caught exception: " << error_.what() << endl;
