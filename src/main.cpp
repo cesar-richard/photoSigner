@@ -171,11 +171,11 @@ void listFile(string path, string outputFileName, string titleString, string wat
         regex regIsOutput ("(" + outputFileName + ")" + "(.*)", regex_constants::icase);
         if( (pDIR=opendir(path.c_str())) ){
                 while((entry = readdir(pDIR))){
-                        if( strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0 ){
-                            ss.clear();
-                            ss.str("");
-                            ss << (++counter);
-                            if(regex_match(entry->d_name,regIsJpg) && !regex_match(entry->d_name,regIsOutput))
+                        if( strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0 && \
+                        (regex_match(entry->d_name,regIsJpg) && !regex_match(entry->d_name,regIsOutput))){
+                                ss.clear();
+                                ss.str("");
+                                ss << (++counter);
                                 proccessImg(path,entry->d_name,ss.str(),outputFileName,titleString,watermarPath,copyright);
                         }
                 }
