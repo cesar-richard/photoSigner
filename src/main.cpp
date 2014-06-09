@@ -9,6 +9,7 @@
 //
 
 #include <Magick++.h>
+#include <wand/MagickWand.h>
 #include <tclap/CmdLine.h>
 #include <iostream>
 #include <sstream>
@@ -17,6 +18,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <dirent.h>
+#include <regex>
 #include <exiv2/exiv2.hpp>
 
 using namespace std;
@@ -46,10 +48,10 @@ void parseOptions(int argc, char** argv)
 
         ValueArg<string> watermarkArg("w","watermark","path to watermark file",true,"wm.png","string");
         cmd.add( watermarkArg );
-        
+
         ValueArg<string> outputFileNameArg("o","outputFileName","Output file name",true,"output","string");
         cmd.add( outputFileNameArg );
-        
+
         cmd.parse( argc, argv );
 
         // Get the value parsed by each arg.
@@ -73,26 +75,46 @@ void parseOptions(int argc, char** argv)
 }
 */
 
-int addTags(string FilePath){
+int addTags(string FilePath, string titleString){
     string copyrightString = "C.Richard";
 
     try {
-
+        cout << 1 << endl;
         Exiv2::Image::AutoPtr image = Exiv2::ImageFactory::open(FilePath);
         image->readMetadata();
 
+        Exiv2::XmpData &xmpData = image->xmpData();
         Exiv2::IptcData &iptcData = image->iptcData();
         if (iptcData.empty()) {
             FilePath += ": No IPTC data found in the file";
             throw Exiv2::Error(1, FilePath);
         }
-        iptcData.clear();
-        Exiv2::Value::AutoPtr value = Exiv2::Value::create(Exiv2::string);
-        value->read("2014");
-        iptcData.add(Exiv2::IptcKey("Iptc.Application2.Keywords"), value.get());
-        value->read("HELLO");
-        iptcData.add(Exiv2::IptcKey("Iptc.Application2.Headline"),value.get());
+        if (xmpData.empty()) {
+            FilePath += ": No XMP data found in the file";
+            throw Exiv2::Error(2, FilePath);
+        }
+        Exiv2::Value::AutoPtr copyrightValue = Exiv2::Value::create(Exiv2::string);
+        Exiv2::Value::AutoPtr titleValue = Exiv2::Value::create(Exiv2::string);
+        Exiv2::Value::AutoPtr titleValue2 = Exiv2::Value::create(Exiv2::langAlt);
+        Exiv2::Value::AutoPtr keywordValue = Exiv2::Value::create(Exiv2::string);
+
+        keywordValue->read("2014");
+        iptcData.add(Exiv2::IptcKey("Iptc.Application2.Keywords"), keywordValue.get());
+        copyrightValue->read(copyrightString);
+        iptcData.add(Exiv2::IptcKey("Iptc.Application2.Byline"), copyrightValue.get());
+        iptcData.add(Exiv2::IptcKey("Iptc.Application2.Credit"), copyrightValue.get());
+        iptcData.add(Exiv2::IptcKey("Iptc.Application2.Copyright"), copyrightValue.get());
+
+
+        titleValue->read(titleString);
+        iptcData.add(Exiv2::IptcKey("Iptc.Application2.ObjectName"), titleValue.get());
+
+        titleValue2->read(titleString);
+        xmpData.erase(xmpData.findKey(Exiv2::XmpKey("Xmp.dc.title")));
+        xmpData.add(Exiv2::XmpKey("Xmp.dc.title"), titleValue2.get());
+
         image->setIptcData(iptcData);
+        image->setXmpData(xmpData);
         image->writeMetadata();
 
         return 0;
@@ -105,46 +127,39 @@ int addTags(string FilePath){
 }
 
 void proccessImg(string path, string fileName, string nameIndex, string outputFileName, string titleString, string watermarkPath,string copyright){
-    addTags(path+fileName);
+    cout << "Doing file " << nameIndex << "... ";
+    addTags(path+fileName, titleString);
         Image image(path + fileName);
         image.fileName(fileName);
-		
-		Image mark(watermarkPath);//TODO mettre en param
-        cout << "File Name  = \t " << image.baseFilename().c_str() << endl;
-        //cout << "Original Width = " << image.baseColumns() << "px"  << endl;
-        //cout << "Original heigth = " << image.baseRows() << "px" << endl;
+
+		Image mark(watermarkPath);
         if(image.baseColumns()>1600||image.baseRows()>1600){
-            cout << "Resizing..." << endl;
+            //cout << "Resizing..." << endl;
                 image.resize(Geometry("1600x1600"));
         }else if(image.baseColumns()==1600||image.baseRows()==1600){
-            cout << "Image deja redimensionnee." << endl;
+            //cout << "Image deja redimensionnee." << endl;
         }else{
-            cout << "Image plus petite que la cible." << endl;
+            //cout << "Image plus petite que la cible." << endl;
         }
-
         image.attribute("EXIF:Copyright",copyright);//TODO Ajouter le reste des TAGs
         image.attribute("EXIF:Artist",copyright);
-        image.attribute("IPTC:By-line",copyright);
-        image.attribute("IPTC:Creator",copyright);
-        image.attribute("IPTC:Credit",copyright);
-        image.attribute("IPTC:CopyrightNotice",copyright);
-        image.attribute("IPTC:ObjectName",titleString);
-        image.attribute("IPTC:Title",titleString);
 
         int value = MaxRGB - (MaxRGB/10);
         Color couleur = Color(value,value,value);
         couleur.alpha(0.7);
 
-        image.strokeColor(couleur); // Outline color
+        image.strokeColor(Color(0,0,0)); // Outline color
         image.fillColor(couleur); // Fill color
         image.strokeWidth(1);
         image.font("");
         image.fontPointsize(24);
         // Draw a String
+
         image.draw( DrawableText(15,image.rows()-15, copyrightString) );
 
         image.composite(mark,SouthEastGravity,DissolveCompositeOp);
         image.write(path + outputFileName + "_" + nameIndex + ".jpg");
+        cout << "Done !" << endl;
 }
 
 void listFile(string path, string outputFileName, string titleString, string watermarPath, string copyright){
@@ -152,13 +167,16 @@ void listFile(string path, string outputFileName, string titleString, string wat
         struct dirent *entry;
         int counter=0;
         std::stringstream ss;
+        regex regIsJpg ("(.*)(.jpg|.JPG)", regex_constants::icase);
+        regex regIsOutput ("(" + outputFileName + ")" + "(.*)", regex_constants::icase);
         if( (pDIR=opendir(path.c_str())) ){
                 while((entry = readdir(pDIR))){
                         if( strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0 ){
                             ss.clear();
                             ss.str("");
                             ss << (++counter);
-                            proccessImg(path,entry->d_name,ss.str(),outputFileName,titleString,watermarPath,copyright);
+                            if(regex_match(entry->d_name,regIsJpg) && !regex_match(entry->d_name,regIsOutput))
+                                proccessImg(path,entry->d_name,ss.str(),outputFileName,titleString,watermarPath,copyright);
                         }
                 }
                 closedir(pDIR);
@@ -172,7 +190,7 @@ int main(int argc,char **argv)
   InitializeMagick(*argv);
 
     try {
-        listFile(path,outputName,title,watermark,copyrightString); //TODO: mettre au propre le moteur d'arguments
+        listFile(path,outputName,title,watermark,copyrightString);
     }
     catch( exception &error_ ){
         cout << "Caught exception: " << error_.what() << endl;
