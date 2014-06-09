@@ -8,7 +8,7 @@ AC_PROG_MAKE_SET
 
 AC_LANG([C++])
 
-CPPFLAGS="$CPPFLAGS -I/usr/include/ImageMagick -I/home/cesar/igep/uav_dev_svn/tags/latest/include"
+CPPFLAGS="$CPPFLAGS -I/usr/include/ImageMagick -I/home/cesar/igep/uav_dev_svn/tags/latest/include -I/usr/include/"
 CFLAGS="$CFLAGS -Wall -O3"
 LIBS="$LIBS -lMagick++ -lMagickCore -lexiv2"
 
